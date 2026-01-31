@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://ominous-guacamole-rjjjp9qpp6wfp75v-5000.app.github.dev/api';
 
 const request = async (url, options = {}) => {
   const response = await fetch(`${API_URL}${url}`, {
