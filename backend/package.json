@@ -1,0 +1,34 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Simple blogging platform backend with authentication and authorization",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "keywords": ["blog", "express", "prisma", "jwt"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^4.18.2",
+    "@prisma/client": "^5.8.0",
+    "jsonwebtoken": "^9.0.2",
+    "bcrypt": "^5.1.1",
+    "zod": "^3.22.4",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "cors": "^2.8.5",
+    "sanitize-html": "^2.11.0",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.8.0",
+    "nodemon": "^3.0.2"
+  }
+}
