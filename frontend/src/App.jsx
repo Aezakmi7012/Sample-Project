@@ -1,42 +1,37 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import Navbar from './components/Navbar';
-import ProtectedRoute from './components/ProtectedRoute';
-import Home from './pages/Home';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
 import CreatePost from './pages/CreatePost';
+import ViewPost from './pages/ViewPost';
 import EditPost from './pages/EditPost';
-import PostDetail from './pages/PostDetail';
+import './App.css';
 
 function App() {
+  const isAuthenticated = () => {
+    return localStorage.getItem('token') !== null;
+  };
+
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/post/:id" element={<PostDetail />} />
-          <Route
-            path="/create"
-            element={
-              <ProtectedRoute>
-                <CreatePost />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/edit/:id"
-            element={
-              <ProtectedRoute>
-                <EditPost />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </AuthProvider>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route 
+          path="/dashboard" 
+          element={isAuthenticated() ? <Dashboard /> : <Navigate to="/" />} 
+        />
+        <Route 
+          path="/create-post" 
+          element={isAuthenticated() ? <CreatePost /> : <Navigate to="/" />} 
+        />
+        <Route 
+          path="/post/:id" 
+          element={isAuthenticated() ? <ViewPost /> : <Navigate to="/" />} 
+        />
+        <Route 
+          path="/edit-post/:id" 
+          element={isAuthenticated() ? <EditPost /> : <Navigate to="/" />} 
+        />
+      </Routes>
     </BrowserRouter>
   );
 }

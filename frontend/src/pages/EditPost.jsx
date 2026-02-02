@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { postAPI } from '../api';
+import { useNavigate, useParams } from 'react-router-dom';
 
-export default function EditPost() {
-  const { id } = useParams();
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+function EditPost() {
+  const [formData, setFormData] = useState({
+    title: '',
+    content: ''
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const navigate = useNavigate();
+  const { id } = useParams();
 
   useEffect(() => {
     fetchPost();
@@ -17,77 +18,128 @@ export default function EditPost() {
 
   const fetchPost = async () => {
     try {
-      const response = await postAPI.getById(id);
-      setTitle(response.data.title);
-      setContent(response.data.content);
+      const response = await fetch(`http://localhost:5000/api/posts/${id}`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (response.status === 401 || response.status === 403) {
+        setError('Session expired. Please login again.');
+        setTimeout(() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/');
+        }, 2000);
+        return;
+      }
+
+      if (data.success) {
+        setFormData({
+          title: data.data.title,
+          content: data.data.content
+        });
+      } else {
+        setError(data.message);
+      }
     } catch (err) {
-      setError(err.message);
+      setError('Failed to fetch post');
     } finally {
       setFetchLoading(false);
     }
   };
 
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setError('');
 
     try {
-      await postAPI.update(id, { title, content });
-      navigate('/');
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/posts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (response.status === 401 || response.status === 403) {
+        setError('You are not authorized to edit this post.');
+        setTimeout(() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/');
+        }, 2000);
+        return;
+      }
+
+      if (data.success) {
+        navigate(`/post/${id}`);
+      } else {
+        setError(data.message);
+      }
     } catch (err) {
-      setError(err.message);
+      setError('Failed to update post');
     } finally {
       setLoading(false);
     }
   };
 
-  if (fetchLoading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
+  if (fetchLoading) return <div className="container">Loading...</div>;
 
   return (
-    <div style={{ maxWidth: '800px', margin: '20px auto', padding: '20px' }}>
-      <h2>Edit Post</h2>
-      {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label>Title:</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            maxLength={200}
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label>Content:</label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            required
-            maxLength={10000}
-            rows={10}
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ padding: '10px 20px', cursor: 'pointer' }}
-          >
-            {loading ? 'Updating...' : 'Update Post'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            style={{ padding: '10px 20px', cursor: 'pointer' }}
-          >
+    <div className="container">
+      <div className="card">
+        <div className="header">
+          <h1>Edit Post</h1>
+          <button onClick={() => navigate(`/post/${id}`)} className="btn-secondary">
             Cancel
           </button>
         </div>
-      </form>
+
+        {error && <div className="error">{error}</div>}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Title</label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              maxLength="200"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Content</label>
+            <textarea
+              name="content"
+              value={formData.content}
+              onChange={handleChange}
+              rows="10"
+              maxLength="10000"
+              required
+            />
+          </div>
+
+          <button type="submit" disabled={loading}>
+            {loading ? 'Updating...' : 'Update Post'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
+
+export default EditPost;

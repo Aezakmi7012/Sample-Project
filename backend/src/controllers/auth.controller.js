@@ -6,8 +6,8 @@ const register = async (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });
 
@@ -34,8 +34,8 @@ const login = async (req, res, next) => {
     // Set token in httpOnly cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });
 
@@ -48,7 +48,10 @@ const login = async (req, res, next) => {
       }
     });
   } catch (error) {
-    next(error);
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || 'Server error'
+    });
   }
 };
 
