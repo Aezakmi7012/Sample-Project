@@ -1,87 +1,87 @@
 const bcrypt = require('bcrypt');
-const { PrismaClient } = require('@prisma/client');
+const UserRepository = require('../repositories/UserRepository');
 const { generateToken } = require('../utils/jwt');
+const { ConflictError, UnauthorizedError } = require('../errors/AppError');
 
-const prisma = new PrismaClient();
-const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
-
-const register = async (userData) => {
-  const { email, username, password } = userData;
-
-  const existingUser = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email },
-        { username }
-      ]
-    }
-  });
-
-  if (existingUser) {
-    if (existingUser.email === email) {
-      throw { statusCode: 409, message: 'Email already registered' };
-    }
-    if (existingUser.username === username) {
-      throw { statusCode: 409, message: 'Username already taken' };
-    }
+/**
+ * Authentication Service
+ * Follows Single Responsibility - handles ONLY authentication business logic
+ * Implements Dependency Inversion - depends on UserRepository abstraction
+ */
+class AuthService {
+  constructor(userRepository = null) {
+    this.userRepository = userRepository || new UserRepository();
+    this.bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS) || 10;
   }
 
-  const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  async register(userData) {
+    const { email, username, password } = userData;
 
-  const user = await prisma.user.create({
-    data: {
+    // Check for existing user
+    const existingUser = await this.userRepository.findByEmailOrUsername(email, username);
+
+    if (existingUser) {
+      if (existingUser.email === email) {
+        throw new ConflictError('Email already registered');
+      }
+      if (existingUser.username === username) {
+        throw new ConflictError('Username already taken');
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, this.bcryptRounds);
+
+    // Create user
+    const user = await this.userRepository.create({
       email,
       username,
       password: hashedPassword,
       role: 'USER'
-    },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      role: true,
-      createdAt: true
+    });
+
+    // Generate token
+    const token = generateToken({
+      userId: user.id,
+      username: user.username,
+      role: user.role
+    });
+
+    return { user, token };
+  }
+
+  async login(credentials) {
+    const { email, password } = credentials;
+
+    // Find user
+    const user = await this.userRepository.findByEmail(email);
+
+    if (!user) {
+      throw new UnauthorizedError('Invalid email or password');
     }
-  });
 
-  const token = generateToken({
-    userId: user.id,
-    username: user.username,
-    role: user.role
-  });
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-  return { user, token };
-};
+    if (!isPasswordValid) {
+      throw new UnauthorizedError('Invalid email or password');
+    }
 
-const login = async (credentials) => {
-  const { email, password } = credentials;
+    // Generate token
+    const token = generateToken({
+      userId: user.id,
+      username: user.username,
+      role: user.role
+    });
 
-  const user = await prisma.user.findUnique({
-    where: { email }
-  });
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
 
-  if (!user) {
-    throw { statusCode: 401, message: 'Invalid email or password' };
+    return { user: userWithoutPassword, token };
   }
+}
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
+// Export singleton instance for backward compatibility
+const authService = new AuthService();
 
-  if (!isPasswordValid) {
-    throw { statusCode: 401, message: 'Invalid email or password' };
-  }
-
-  const token = generateToken({
-    userId: user.id,
-    username: user.username,
-    role: user.role
-  });
-
-  const { password: _, ...userWithoutPassword } = user;
-
-  return { user: userWithoutPassword, token };
-};
-
-module.exports = {
-  register,
-  login
-};
+module.exports = authService;

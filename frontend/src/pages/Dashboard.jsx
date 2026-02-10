@@ -59,6 +59,34 @@ function Dashboard() {
     return text.substring(0, maxLength) + '...';
   };
 
+  const handleDelete = async (postId) => {
+    if (!confirm('Are you sure you want to delete this post?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (response.status === 401 || response.status === 403) {
+        alert('You are not authorized to delete this post.');
+        return;
+      }
+
+      if (data.success) {
+        fetchPosts(); // Refresh the posts list
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Failed to delete post');
+    }
+  };
+
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
   if (loading) return <div className="container">Loading...</div>;
@@ -93,16 +121,18 @@ function Dashboard() {
                 <small>By: {post.author.username}</small>
                 <small>{new Date(post.createdAt).toLocaleDateString()}</small>
               </div>
-              {currentUser.id === post.authorId && (
+              {(currentUser.id === post.authorId || currentUser.role === 'ADMIN') && (
                 <div className="post-actions">
+                  {currentUser.id === post.authorId && (
+                    <button 
+                      onClick={() => navigate(`/edit-post/${post.id}`)} 
+                      className="btn-edit"
+                    >
+                      Edit
+                    </button>
+                  )}
                   <button 
-                    onClick={() => navigate(`/edit-post/${post.id}`)} 
-                    className="btn-edit"
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => navigate(`/post/${post.id}`)} 
+                    onClick={() => handleDelete(post.id)} 
                     className="btn-danger"
                   >
                     Delete

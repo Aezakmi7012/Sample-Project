@@ -97,11 +97,13 @@ function ViewPost() {
           <p>{post.content}</p>
         </div>
 
-        {currentUser.id === post.authorId && (
+        {(currentUser.id === post.authorId || currentUser.role === 'ADMIN') && (
           <div className="post-actions">
-            <button onClick={() => navigate(`/edit-post/${post.id}`)} className="btn-edit">
-              Edit
-            </button>
+            {currentUser.id === post.authorId && (
+              <button onClick={() => navigate(`/edit-post/${post.id}`)} className="btn-edit">
+                Edit
+              </button>
+            )}
             <button onClick={handleDelete} className="btn-danger">
               Delete
             </button>

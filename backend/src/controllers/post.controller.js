@@ -1,95 +1,80 @@
 const postService = require('../services/post.service');
 
-const getAllPosts = async (req, res) => {
+/**
+ * Post Controller
+ * Follows Single Responsibility - handles ONLY HTTP request/response
+ * Error handling delegated to global error handler middleware
+ */
+
+const getAllPosts = async (req, res, next) => {
   try {
     const posts = await postService.getAllPosts();
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Posts retrieved successfully',
       data: posts
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      success: false,
-      message: error.message || 'Server error'
-    });
+    next(error);
   }
 };
 
-const getPostById = async (req, res) => {
+const getPostById = async (req, res, next) => {
   try {
     const post = await postService.getPostById(req.params.id);
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Post retrieved successfully',
       data: post
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      success: false,
-      message: error.message || 'Server error'
-    });
+    next(error);
   }
 };
 
-const createPost = async (req, res) => {
+const createPost = async (req, res, next) => {
   try {
     const post = await postService.createPost(req.body, req.user.userId);
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Post created successfully',
       data: post
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      success: false,
-      message: error.message || 'Server error'
-    });
+    next(error);
   }
 };
 
-const updatePost = async (req, res) => {
+const updatePost = async (req, res, next) => {
   try {
     const post = await postService.updatePost(
       req.params.id,
       req.body,
-      req.user.userId,
-      req.user.role
+      req.user.userId
     );
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Post updated successfully',
       data: post
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      success: false,
-      message: error.message || 'Server error'
-    });
+    next(error);
   }
 };
 
-const deletePost = async (req, res) => {
+const deletePost = async (req, res, next) => {
   try {
     const result = await postService.deletePost(
       req.params.id,
       req.user.userId,
       req.user.role
     );
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: result.message
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      success: false,
-      message: error.message || 'Server error'
-    });
+    next(error);
   }
 };
 

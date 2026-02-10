@@ -1,134 +1,76 @@
-const { PrismaClient } = require('@prisma/client');
-const { sanitizeContent } = require('../utils/sanitize');
+const PostRepository = require('../repositories/PostRepository');
+const AuthorizationService = require('./authorization.service');
+const { NotFoundError } = require('../errors/AppError');
 
-const prisma = new PrismaClient();
-
-
-const getAllPosts = async () => {
-  const posts = await prisma.post.findMany({
-    orderBy: {
-      createdAt: 'desc'
-    },
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true
-        }
-      }
-    }
-  });
-
-  return posts;
-};
-
-
-const getPostById = async (postId) => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true
-        }
-      }
-    }
-  });
-
-  if (!post) {
-    throw { statusCode: 404, message: 'Post not found' };
+/**
+ * Post Service
+ * Follows Single Responsibility - handles ONLY post business logic
+ * Implements Dependency Inversion - depends on PostRepository abstraction
+ * Authorization logic extracted to AuthorizationService
+ */
+class PostService {
+  constructor(postRepository = null) {
+    this.postRepository = postRepository || new PostRepository();
   }
 
-  return post;
-};
+  async getAllPosts() {
+    return this.postRepository.findAll();
+  }
 
-const createPost = async (postData, userId) => {
-  const { title, content } = postData;
+  async getPostById(postId) {
+    const post = await this.postRepository.findById(postId);
 
-  const sanitizedContent = sanitizeContent(content);
+    if (!post) {
+      throw new NotFoundError('Post not found');
+    }
 
-  const post = await prisma.post.create({
-    data: {
+    return post;
+  }
+
+  async createPost(postData, userId) {
+    const { title, content } = postData;
+
+    return this.postRepository.create({
       title,
-      content: sanitizedContent,
+      content,
       authorId: userId
-    },
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true
-        }
-      }
+    });
+  }
+
+  async updatePost(postId, postData, userId) {
+    // Find post
+    const post = await this.postRepository.findByIdWithoutAuthor(postId);
+
+    if (!post) {
+      throw new NotFoundError('Post not found');
     }
-  });
 
-  return post;
-};
+    // Check authorization (owner only for update)
+    AuthorizationService.ensureIsOwner(post.authorId, userId, 'post');
 
-const updatePost = async (postId, postData, userId, userRole) => {
-
-  const post = await prisma.post.findUnique({
-    where: { id: postId }
-  });
-
-  if (!post) {
-    throw { statusCode: 404, message: 'Post not found' };
+    // Update post
+    return this.postRepository.update(postId, postData);
   }
 
-  if (post.authorId !== userId) {
-    throw { statusCode: 403, message: 'You can only update your own posts' };
-  }
+  async deletePost(postId, userId, userRole) {
+    // Find post
+    const post = await this.postRepository.findByIdWithoutAuthor(postId);
 
-  // Sanitize content if provided
-  const updateData = { ...postData };
-  if (updateData.content) {
-    updateData.content = sanitizeContent(updateData.content);
-  }
-
-  const updatedPost = await prisma.post.update({
-    where: { id: postId },
-    data: updateData,
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true
-        }
-      }
+    if (!post) {
+      throw new NotFoundError('Post not found');
     }
-  });
 
-  return updatedPost;
-};
+    // Check authorization (owner or admin)
+    AuthorizationService.ensureCanModify(post.authorId, userId, userRole, 'post');
 
+    // Delete post
+    await this.postRepository.delete(postId);
 
-const deletePost = async (postId, userId, userRole) => {
-  const post = await prisma.post.findUnique({
-    where: { id: postId }
-  });
-
-  if (!post) {
-    throw { statusCode: 404, message: 'Post not found' };
+    return { message: 'Post deleted successfully' };
   }
+}
 
-  // Check ownership or admin role
-  if (post.authorId !== userId && userRole !== 'ADMIN') {
-    throw { statusCode: 403, message: 'Access denied. Only the post owner or admin can delete this post.' };
-  }
+// Export singleton instance for backward compatibility
+const postService = new PostService();
 
-  await prisma.post.delete({
-    where: { id: postId }
-  });
-
-  return { message: 'Post deleted successfully' };
-};
-
-module.exports = {
-  getAllPosts,
-  getPostById,
-  createPost,
-  updatePost,
-  deletePost
-};
+module.exports = postService;

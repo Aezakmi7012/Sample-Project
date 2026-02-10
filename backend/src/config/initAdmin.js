@@ -1,34 +1,34 @@
 const bcrypt = require('bcrypt');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const UserRepository = require('../repositories/UserRepository');
 
 const ADMIN_EMAIL = 'admin@blog.com';
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'Admin@123456';
 
+/**
+ * Admin Initialization Service
+ * Follows Single Responsibility - handles ONLY admin user initialization
+ * Uses repository pattern for data access (Dependency Inversion)
+ */
 const initializeAdmin = async () => {
   try {
-    const adminExists = await prisma.user.findUnique({
-      where: { email: ADMIN_EMAIL }
-    });
+    const userRepository = new UserRepository();
+    const adminExists = await userRepository.findByEmail(ADMIN_EMAIL);
 
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
       
-      await prisma.user.create({
-        data: {
-          email: ADMIN_EMAIL,
-          username: ADMIN_USERNAME,
-          password: hashedPassword,
-          role: 'ADMIN'
-        }
+      await userRepository.create({
+        email: ADMIN_EMAIL,
+        username: ADMIN_USERNAME,
+        password: hashedPassword,
+        role: 'ADMIN'
       });
 
-      console.log('✅ Admin user created:');
+      console.log('   Admin user created:');
       console.log(`   Email: ${ADMIN_EMAIL}`);
       console.log(`   Password: ${ADMIN_PASSWORD}`);
-      console.log('   ⚠️  Please change the password after first login!');
+      console.log('   Please change the password after first login!');
     }
   } catch (error) {
     console.error('Failed to initialize admin user:', error.message);

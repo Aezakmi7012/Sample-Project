@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
 const { initializeAdmin } = require('./config/initAdmin');
+const errorHandler = require('./middleware/errorHandler');
 
 const authRoutes = require('./routes/auth.routes');
 const postRoutes = require('./routes/post.routes');
@@ -46,6 +47,9 @@ app.use('*', (req, res) => {
     message: 'Route not found'
   });
 });
+
+// Global error handler (must be last)
+app.use(errorHandler);
 
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
