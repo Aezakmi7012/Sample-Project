@@ -1,0 +1,51 @@
+[project]
+name = "retrieval-pipeline"
+version = "0.1.0"
+description = "A modular document retrieval and reranking pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate",
+    "beautifulsoup4",
+    "chromadb",
+    "docling",
+    "jq",
+    "langchain",
+    "langchain-chroma",
+    "langchain-community",
+    "langchain-docling",
+    "langchain-huggingface",
+    "langchain-text-splitters",
+    "loguru",
+    "pandas",
+    "pypdf",
+    "python-docx",
+    "python-pptx",
+    "requests",
+    "sentence-transformers",
+    "tiktoken",
+    "torch",
+    "torchaudio",
+    "torchvision",
+    "transformers",
+    "unstructured",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = []
